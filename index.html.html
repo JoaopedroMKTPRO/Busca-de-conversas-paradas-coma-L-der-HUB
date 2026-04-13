@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LíderHub — Conversas Paradas</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #0a0a0c;
+    --surface:    #111114;
+    --surface2:   #18181d;
+    --surface3:   #1f1f26;
+    --border:     #2a2a35;
+    --border2:    #353545;
+    --text:       #e8e8f0;
+    --text2:      #9090a8;
+    --text3:      #55556a;
+    --accent:     #e05c3a;
+    --accent2:    #ff7a55;
+    --accent-dim: rgba(224,92,58,0.12);
+    --yellow:     #f0c040;
+    --yellow-dim: rgba(240,192,64,0.12);
+    --green:      #4caf82;
+    --green-dim:  rgba(76,175,130,0.12);
+    --blue:       #4a9eff;
+    --blue-dim:   rgba(74,158,255,0.10);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: .6;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* HEADER */
+  header {
+    padding: 40px 0 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); border: 1px solid var(--accent); padding: 3px 10px; margin-bottom: 12px; opacity: .8;
+  }
+  .badge::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  h1 { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--text3); font-size: 11px; margin-top: 6px; font-style: italic; }
+
+  /* CONFIG */
+  .config { background: var(--surface); border: 1px solid var(--border); padding: 24px; margin-bottom: 28px; }
+  .config-title { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin-bottom: 16px; }
+  .config-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; }
+  @media(max-width:560px){ .config-grid{ grid-template-columns:1fr; } }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); }
+  .field input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 10px 14px; outline: none; transition: border-color .2s; width: 100%; }
+  .field input:focus { border-color: var(--accent); }
+  .field input::placeholder { color: var(--text3); }
+  .btn-run { background: var(--accent); color: #fff; border: none; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 11px 28px; cursor: pointer; transition: background .2s, transform .1s; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .btn-run:hover { background: var(--accent2); }
+  .btn-run:active { transform: scale(.98); }
+  .btn-run:disabled { background: var(--surface3); color: var(--text3); cursor: not-allowed; }
+
+  /* PROGRESS */
+  #progress-area { display: none; background: var(--surface); border: 1px solid var(--border); padding: 20px 24px; margin-bottom: 28px; }
+  .progress-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 11px; color: var(--text3); }
+  .progress-bar-wrap { height: 3px; background: var(--surface3); margin-bottom: 10px; }
+  .progress-bar { height: 3px; background: var(--accent); width: 0%; transition: width .4s ease; }
+  #progress-log { color: var(--text2); font-size: 11px; max-height: 110px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .log-line { display: flex; gap: 10px; }
+  .log-line .ts { color: var(--text3); flex-shrink: 0; }
+  .log-line.err  { color: var(--accent); }
+  .log-line.ok   { color: var(--green); }
+  .log-line.warn { color: var(--yellow); }
+
+  /* STATS */
+  #stats-bar { display: none; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 28px; }
+  @media(max-width:560px){ #stats-bar{ grid-template-columns: repeat(2,1fr); } }
+  .stat { background: var(--surface); padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+  .stat-val { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; line-height: 1; }
+  .stat-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); }
+  .stat-val.red    { color: var(--accent); }
+  .stat-val.yellow { color: var(--yellow); }
+  .stat-val.green  { color: var(--green); }
+  .stat-val.blue   { color: var(--blue); }
+
+  /* FILTER CHIPS */
+  #filter-area { display: none; margin-bottom: 20px; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .filter-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-right: 4px; }
+  .chip { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; padding: 5px 12px; cursor: pointer; transition: all .15s; }
+  .chip:hover { border-color: var(--border2); color: var(--text); }
+  .chip.active        { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .chip.active.yellow { background: var(--yellow-dim); border-color: var(--yellow); color: var(--yellow); }
+
+  /* CARDS */
+  #results { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); overflow: hidden; opacity: 0; animation: fadeUp .3s ease forwards; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  .card-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; transition: background .15s; }
+  .card-header:hover { background: var(--surface2); }
+  .card-meta { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  .card-name { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-sub  { color: var(--text3); font-size: 11px; }
+  .card-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .tag { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; padding: 3px 9px; border: 1px solid; }
+  .tag.tentativas { color: var(--accent);  border-color: var(--accent);  background: var(--accent-dim); }
+  .tag.unica      { color: var(--yellow);  border-color: var(--yellow);  background: var(--yellow-dim); }
+  .chevron { color: var(--text3); font-size: 11px; transition: transform .2s; }
+  .card.open .chevron { transform: rotate(180deg); }
+
+  /* CARD BODY */
+  .card-body { display: none; flex-direction: column; gap: 20px; padding: 20px; }
+  .card.open .card-body { display: flex; }
+  .section-title { font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* DIAG BOX */
+  .diag-box { background: var(--surface2); border: 1px solid var(--border); padding: 16px 18px; }
+  .diag-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .diag-title.red    { color: var(--accent); }
+  .diag-title.yellow { color: var(--yellow); }
+  .diag-desc { color: var(--text2); font-size: 12px; line-height: 1.7; }
+
+  /* DETAIL GRID */
+  .detail-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  @media(max-width:560px){ .detail-grid{ grid-template-columns: 1fr 1fr; } }
+  .detail-cell { background: var(--surface2); padding: 12px 16px; display: flex; flex-direction: column; gap: 3px; }
+  .detail-label { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); }
+  .detail-val { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; }
+  .detail-val.red    { color: var(--accent); }
+  .detail-val.yellow { color: var(--yellow); }
+  .detail-val.blue   { color: var(--blue); }
+
+  /* TIMELINE */
+  .timeline { display: flex; flex-direction: column; }
+  .msg { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .msg:last-child { border-bottom: none; }
+  .msg-dir { font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; padding-top: 2px; flex-shrink: 0; width: 40px; text-align: right; }
+  .msg-dir.out { color: var(--accent); }
+  .msg-dir.in  { color: var(--blue); }
+  .msg-content { flex:1; min-width:0; }
+  .msg-text { color: var(--text2); font-size: 12px; line-height: 1.5; word-break: break-word; }
+  .msg-text.repeat { color: var(--accent); background: var(--accent-dim); padding: 2px 6px; border-left: 2px solid var(--accent); }
+  .msg-ts { color: var(--text3); font-size: 10px; margin-top: 2px; }
+  .msg-badge { display: inline-block; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); font-style: italic; display: none; }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="badge">Auditoria local</div>
+    <h1>Conversas <span>Paradas</span></h1>
+    <p class="subtitle">Últimos 7 dias · Silêncio ≥ 48h · 3+ mensagens da IA sem resposta</p>
+  </header>
+
+  <div class="config">
+    <div class="config-title">// Configuração</div>
+    <div class="config-grid">
+      <div class="field">
+        <label>LíderHub API Key</label>
+        <input type="password" id="api-key" placeholder="sua-chave-aqui">
+      </div>
+      <button class="btn-run" id="run-btn" onclick="startAudit()">
+        <span>▶</span> Iniciar Auditoria
+      </button>
+    </div>
+  </div>
+
+  <div id="progress-area">
+    <div class="progress-header">
+      <span id="progress-label">Aguardando...</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <div id="progress-log"></div>
+  </div>
+
+  <div id="stats-bar">
+    <div class="stat"><div class="stat-val blue"   id="s-total">—</div><div class="stat-label">Conversas verificadas</div></div>
+    <div class="stat"><div class="stat-val red"    id="s-stalled">—</div><div class="stat-label">Paradas (≥48h)</div></div>
+    <div class="stat"><div class="stat-val red"    id="s-tentativas">—</div><div class="stat-label">3+ tentativas sem resposta</div></div>
+    <div class="stat"><div class="stat-val yellow" id="s-unica">—</div><div class="stat-label">1–2 tentativas sem resposta</div></div>
+  </div>
+
+  <div id="filter-area">
+    <span class="filter-label">Filtrar:</span>
+    <button class="chip active"       onclick="filterCards('all',this)">Todos</button>
+    <button class="chip"              onclick="filterCards('tentativas',this)">3+ tentativas</button>
+    <button class="chip yellow"       onclick="filterCards('unica',this)">1–2 tentativas</button>
+  </div>
+
+  <div id="results"></div>
+  <div class="empty-state" id="empty-state">Nenhuma conversa parada encontrada nos últimos 7 dias.</div>
+
+</div>
+<script>
+const DELAY_MS   = 420;
+const HOURS_IDLE = 48;
+const CONSEC_MIN = 3;
+const DAYS_BACK  = 7;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function ts() { return new Date().toLocaleTimeString('pt-BR',{hour12:false}); }
+
+function log(msg, type='') {
+  const el = document.getElementById('progress-log');
+  const d  = document.createElement('div');
+  d.className = 'log-line ' + type;
+  d.innerHTML = `<span class="ts">${ts()}</span><span>${esc(msg)}</span>`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  if (label) document.getElementById('progress-label').textContent = label;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function hoursSince(iso) {
+  return Math.round((Date.now() - new Date(iso).getTime()) / 3600000);
+}
+
+async function apiFetch(path, key) {
+  const res = await fetch('https://api.liderhub.com.br' + path, {
+    headers: { 'x-company-key': key, 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} → ${path}`);
+  return res.json();
+}
+
+async function fetchAllChats(key) {
+  const since = new Date(Date.now() - DAYS_BACK * 86400000).toISOString();
+  let all = [], page = 1;
+  while (true) {
+    await sleep(DELAY_MS);
+    const data  = await apiFetch(`/v1/chat?modifiedAfter=${since}&limit=50&page=${page}`, key);
+    const items = Array.isArray(data) ? data : (data.data || data.chats || data.items || []);
+    if (!items.length) break;
+    all = all.concat(items);
+    if (items.length < 50) break;
+    page++;
+  }
+  return all;
+}
+
+async function fetchMessages(key, contactId) {
+  await sleep(DELAY_MS);
+  const data = await apiFetch(`/v1/message?contactId=${encodeURIComponent(contactId)}&limit=100`, key);
+  return Array.isArray(data) ? data : (data.data || data.messages || data.items || []);
+}
+
+function analyzeConversation(messages) {
+  if (!messages || messages.length < 2) return { isStalled: false };
+
+  const sorted = [...messages].sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
+
+  // Última mensagem deve ser da IA
+  const lastMsg = sorted[sorted.length - 1];
+  if (!lastMsg.outbound) return { isStalled: false };
+
+  // Silêncio mínimo de 48h
+  const idle = hoursSince(lastMsg.sentAt);
+  if (idle < HOURS_IDLE) return { isStalled: false };
+
+  // Contar mensagens consecutivas da IA no final
+  let consec = 0;
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i].outbound === true) consec++;
+    else break;
+  }
+
+  const pattern = consec >= CONSEC_MIN ? 'tentativas' : 'unica';
+  const patternDesc = consec >= CONSEC_MIN
+    ? `A IA enviou ${consec} mensagens seguidas sem receber resposta do lead. Isso pode indicar um loop no fluxo, insistência excessiva ou uma pergunta que o lead não soube ou não quis responder.`
+    : `A IA enviou ${consec} mensagem(ns) sem receber resposta. O lead parou de responder sem que haja um padrão claro de falha da IA.`;
+
+  // Detectar repetição entre as últimas mensagens da IA
+  const lastOutMsgs = sorted.filter(m => m.outbound).slice(-consec);
+  const texts = lastOutMsgs.map(m => (m.content || m.audioText || '').trim().toLowerCase());
+  const counts = {};
+  texts.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+  const hasRepeat = Object.values(counts).some(v => v > 1) && texts.length > 1;
+
+  const lastLeadMsg = [...sorted].reverse().find(m => !m.outbound);
+
+  return { isStalled: true, consec, pattern, patternDesc, hasRepeat, idle, lastMsg, lastLeadMsg, sortedMessages: sorted };
+}
+
+function renderCard(chat, analysis, index) {
+  const id     = `card-${index}`;
+  const name   = chat.contactName   || 'Sem nome';
+  const number = chat.contactNumber || chat.contactId || '—';
+  const { consec, pattern, patternDesc, hasRepeat, idle, lastLeadMsg, sortedMessages } = analysis;
+
+  const showMsgs  = sortedMessages.slice(-10);
+  const tagClass  = pattern === 'tentativas' ? 'tentativas' : 'unica';
+  const diagColor = pattern === 'tentativas' ? 'red' : 'yellow';
+  const diagTitle = pattern === 'tentativas' ? '⚠ Possível falha da IA' : '○ Lead parou sem resposta';
+
+  // Detectar textos repetidos para highlight
+  const outTexts = {};
+  showMsgs.forEach(m => {
+    if (m.outbound) {
+      const t = (m.content || m.audioText || '').trim().toLowerCase();
+      outTexts[t] = (outTexts[t] || 0) + 1;
+    }
+  });
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = id;
+  card.dataset.pattern = pattern;
+  card.style.animationDelay = (index * 50) + 'ms';
+
+  card.innerHTML = `
+    <div class="card-header" onclick="toggleCard('${id}')">
+      <div class="card-meta">
+        <div class="card-name">${esc(name)}</div>
+        <div class="card-sub">${esc(number)} · parada há ${idle}h</div>
+      </div>
+      <div class="card-right">
+        <span class="tag ${tagClass}">${consec}× sem resposta</span>
+        <span class="chevron">▼</span>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div>
+        <div class="section-title">Detalhes</div>
+        <div class="detail-grid">
+          <div class="detail-cell">
+            <div class="detail-label">Horas parada</div>
+            <div class="detail-val ${idle >= 72 ? 'red' : 'yellow'}">${idle}h</div>
+          </div>
+          <div class="detail-cell">
+            <div class="detail-label">Tentativas da IA</div>
+            <div class="detail-val ${consec >= CONSEC_MIN ? 'red' : 'yellow'}">${consec}</div>
+          </div>
+          <div class="detail-cell">
+            <div class="detail-label">Texto repetido</div>
+            <div class="detail-val ${hasRepeat ? 'red' : 'blue'}">${hasRepeat ? 'SIM' : 'NÃO'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Diagnóstico</div>
+        <div class="diag-box">
+          <div class="diag-title ${diagColor}">${diagTitle}</div>
+          <div class="diag-desc">${esc(patternDesc)}${hasRepeat ? ' <strong style="color:var(--accent)">A IA enviou mensagens com texto idêntico.</strong>' : ''}</div>
+        </div>
+      </div>
+
+      ${lastLeadMsg ? `
+      <div>
+        <div class="section-title">Última mensagem do lead</div>
+        <div class="diag-box">
+          <div class="diag-desc">"${esc(lastLeadMsg.content || lastLeadMsg.audioText || '(áudio sem transcrição)')}"</div>
+          <div style="color:var(--text3);font-size:10px;margin-top:6px;">${fmtDate(lastLeadMsg.sentAt)}</div>
+        </div>
+      </div>` : ''}
+
+      <div>
+        <div class="section-title">Últimas mensagens</div>
+        <div class="timeline" id="${id}-tl"></div>
+      </div>
+
+    </div>
+  `;
+
+  document.getElementById('results').appendChild(card);
+
+  const tl = card.querySelector(`#${id}-tl`);
+  showMsgs.forEach(m => {
+    const dir   = m.outbound ? 'out' : 'in';
+    const label = m.outbound ? 'IA'  : 'Lead';
+    const raw   = m.content || m.audioText || '(sem texto)';
+    const t     = raw.trim().toLowerCase();
+    const isRep = m.outbound && outTexts[t] > 1;
+
+    const row = document.createElement('div');
+    row.className = 'msg';
+    row.innerHTML = `
+      <div class="msg-dir ${dir}">${label}</div>
+      <div class="msg-content">
+        <div class="msg-text ${isRep ? 'repeat' : ''}">${esc(raw)}${isRep ? '<span class="msg-badge">repetida</span>' : ''}</div>
+        <div class="msg-ts">${fmtDate(m.sentAt)}</div>
+      </div>`;
+    tl.appendChild(row);
+  });
+}
+
+function toggleCard(id) { document.getElementById(id).classList.toggle('open'); }
+
+function filterCards(type, btn) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.card').forEach(c => {
+    c.style.display = (type === 'all' || c.dataset.pattern === type) ? '' : 'none';
+  });
+}
+
+async function startAudit() {
+  const key = document.getElementById('api-key').value.trim();
+  if (!key) { alert('Cole sua API Key da LíderHub antes de iniciar.'); return; }
+
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('progress-area').style.display = 'block';
+  document.getElementById('stats-bar').style.display = 'none';
+  document.getElementById('filter-area').style.display = 'none';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('progress-log').innerHTML = '';
+  document.getElementById('empty-state').style.display = 'none';
+  setProgress(0, 'Conectando à LíderHub...');
+
+  try {
+    log('Buscando conversas dos últimos 7 dias...');
+    const chats = await fetchAllChats(key);
+    log(`${chats.length} conversa(s) encontrada(s)`, 'ok');
+    setProgress(10, `Carregando mensagens...`);
+
+    const stalled = [];
+    let done = 0;
+
+    for (const chat of chats) {
+      const cid = chat.contactId || chat.id;
+      if (!cid) { done++; continue; }
+      try {
+        const msgs     = await fetchMessages(key, cid);
+        const analysis = analyzeConversation(msgs);
+        if (analysis.isStalled) {
+          stalled.push({ chat, analysis });
+          log(`Parada: ${chat.contactName || cid} · ${analysis.consec}× sem resposta · ${analysis.idle}h`, analysis.pattern === 'tentativas' ? 'err' : 'warn');
+        }
+      } catch (e) {
+        log(`Erro em ${cid}: ${e.message}`, 'err');
+      }
+      done++;
+      setProgress(10 + Math.round((done / chats.length) * 88), `Verificando ${done}/${chats.length}...`);
+    }
+
+    const cTentativas = stalled.filter(s => s.analysis.pattern === 'tentativas').length;
+    const cUnica      = stalled.filter(s => s.analysis.pattern === 'unica').length;
+
+    document.getElementById('s-total').textContent      = chats.length;
+    document.getElementById('s-stalled').textContent    = stalled.length;
+    document.getElementById('s-tentativas').textContent = cTentativas;
+    document.getElementById('s-unica').textContent      = cUnica;
+    document.getElementById('stats-bar').style.display  = 'grid';
+
+    if (!stalled.length) {
+      document.getElementById('empty-state').style.display = 'block';
+      setProgress(100, 'Concluído — nenhuma conversa parada');
+      document.getElementById('run-btn').disabled = false;
+      return;
+    }
+
+    // Ordenar: mais críticos (tentativas) primeiro, depois por idle desc
+    stalled.sort((a, b) => {
+      if (a.analysis.pattern !== b.analysis.pattern) return a.analysis.pattern === 'tentativas' ? -1 : 1;
+      return b.analysis.idle - a.analysis.idle;
+    });
+
+    document.getElementById('filter-area').style.display = 'flex';
+    stalled.forEach(({ chat, analysis }, i) => renderCard(chat, analysis, i));
+
+    setProgress(100, `Concluído — ${stalled.length} conversa(s) parada(s)`);
+    log(`Auditoria finalizada. ${cTentativas} com 3+ tentativas · ${cUnica} com 1–2 tentativas.`, 'ok');
+
+  } catch (e) {
+    log('Erro crítico: ' + e.message, 'err');
+    setProgress(0, 'Erro — verifique a chave e tente novamente');
+  }
+
+  document.getElementById('run-btn').disabled = false;
+}
+</script>
+</body>
+</html>
